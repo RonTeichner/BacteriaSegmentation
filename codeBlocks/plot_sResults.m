@@ -1,0 +1,101 @@
+% This function plots the raw image, first segmentation and final segmented image with
+% cells fitted as ellipses.
+
+function [] = plot_sResults(sResults, lengths)
+
+CC2 = sResults.CC2;
+IM = sResults.IM;
+imbw0 = sResults.imbw0;
+bottom_line = sResults.bottom_line;
+BLine = sResults.BLine;
+indexOfCurrentPng = sResults.k;
+NumberImages = sResults.NumberImages;
+i = sResults.i;
+c = sResults.c;
+
+minI = 1000;
+maxI = 6000;
+
+[n1,n2] = size(IM);
+
+s = regionprops(CC2,{'Centroid', 'MajorAxisLength', 'MinorAxisLength', 'Orientation'});
+centroids2 = cat(1, s.Centroid);
+
+
+h = figure('vis', 'off');
+set(gcf,'PaperUnits','inches','PaperPosition',[0 0 12 16])
+
+%----------- BG substracted raw image -----------
+
+%subplot(1,3,1)
+tiledlayout(4,3)
+nexttile([3,1])
+imagesc(IM)
+colormap copper
+hold on;
+line([1,n2], [bottom_line, bottom_line], 'Color', 'red','LineWidth',2);
+hold off
+xt = get(gca, 'XTick');
+set(gca, 'FontSize', 16)
+yt = get(gca, 'YTick');
+set(gca, 'FontSize', 16)
+
+%----------- First segmented image -----------
+
+%subplot(1,3,2)
+nexttile([3,1])
+imagesc(imbw0)			%imagesc(flipud(im))
+colormap copper
+hold on
+plot(centroids2(:,1), centroids2(:,2),'or','MarkerFaceColor','red','MarkerSize',12)
+hold on
+line([1,n2], [n1-BLine, n1-BLine], 'Color', 'red','LineWidth',2);
+hold off
+xt = get(gca, 'XTick');
+set(gca, 'FontSize', 16)
+yt = get(gca, 'YTick');
+set(gca, 'FontSize', 16)
+
+%----------- Final segmented image & Ellipse fit to cells -----------
+
+t = linspace(0,2*pi,50);
+
+%subplot(1,3,3)
+nexttile([3,1])
+imagesc(IM)			%imagesc(flipud(im))
+colormap copper
+caxis([minI maxI])
+hold on
+plot(centroids2(:,1), centroids2(:,2),'or','MarkerFaceColor','k','MarkerSize',12)
+hold on
+
+for kk = 1:length(s)
+    a = s(kk).MajorAxisLength/2;
+    b = s(kk).MinorAxisLength/2;
+    Xc = s(kk).Centroid(1);
+    Yc = s(kk).Centroid(2);
+    phi = deg2rad(-s(kk).Orientation);
+    x = Xc + a*cos(t)*cos(phi) - b*sin(t)*sin(phi);
+    y = Yc + a*cos(t)*sin(phi) + b*sin(t)*cos(phi);
+    plot(x,y,'-','Color',[.8 .4 .8],'Linewidth',4)
+end
+hold off
+
+xt = get(gca, 'XTick');
+set(gca, 'FontSize', 16)
+yt = get(gca, 'YTick');
+set(gca, 'FontSize', 16)
+
+nexttile([1, 3])
+nDotsInPlot = 300;
+if indexOfCurrentPng <= nDotsInPlot
+    plotIndexes = 1:indexOfCurrentPng;
+    plot(plotIndexes, lengths(plotIndexes));
+    xlim([1, nDotsInPlot]);
+else
+    plotIndexes = indexOfCurrentPng-nDotsInPlot:indexOfCurrentPng;
+    plot(plotIndexes, lengths(plotIndexes));
+end
+
+
+print(h,'-dpng','-r50',['../plot/imbw_',char(c(i)),'_',num2str(indexOfCurrentPng,'%03d'),'_of_',num2str(NumberImages,'%03d'),'.png'])
